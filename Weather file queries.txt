@@ -1,0 +1,99 @@
+####################################### 1. Give the count of the minimum number of days for the time when temperature reduced ###########################################
+SELECT 
+	count(T.Temperature) as 'no of days'
+FROM
+(SELECT 
+	Temperature,
+    (lead(Temperature) over(order by Dates)) as 'Temp_1'
+FROM weathers) as T
+where T.Temperature < T.Temp_1;
+
+
+
+############################################2.Find the temperature as Cold / hot by using the case and avg of values of the given data set ############################
+SELECT
+	T.*,
+	CASE
+		WHEN T.Temperature > T.AVG_TEMP THEN 'HOT'
+        ELSE 'COLD'
+	END AS 'CATEGORY'
+FROM
+(SELECT 
+	Temperature,
+    ROUND(AVG(Temperature) OVER(ORDER BY Dates),2) AS 'AVG_TEMP'
+FROM weathers) AS T;
+
+#################################################### 3. Can you check for all 4 consecutive days when the temperature was below 30 Fahrenheit ################################
+SELECT
+	Dates
+FROM
+(SELECT 
+	Dates,
+    (LEAD(Dates,1) OVER(ORDER BY Dates)) AS DATE_P_1,
+    (LEAD(Dates,2) OVER(ORDER BY Dates)) AS DATE_P_2,
+    (LEAD(Dates,3) OVER(ORDER BY Dates)) AS DATE_P_3,
+    (LAG(Dates,1) OVER(ORDER BY Dates)) AS DATE_M_1,
+    (LAG(Dates,2) OVER(ORDER BY Dates)) AS DATE_M_2,
+    (LAG(Dates,3) OVER(ORDER BY Dates)) AS DATE_M_3,
+    Maximum_temperature_F
+FROM weathers) AS T
+WHERE (datediff(T.DATE_P_1,T.Dates)=1 AND datediff(T.DATE_P_2,T.Dates)=2 AND datediff(T.DATE_P_3,T.Dates)=3) OR (datediff(T.Dates,T.DATE_M_1)=1 AND datediff(T.Dates,T.DATE_M_2)=2 AND datediff(T.Dates,T.DATE_P_3)=3) AND T.Maximum_temperature_F < 40;
+
+#################################################### 4.Can you find the maximum number of days for which -- temperature dropped ##########################################
+SELECT
+	T2.*,
+    (row_number() OVER(PARTITION BY MONTH(T2.Dates) ORDER BY T1.Dates)) AS RN
+FROM
+(SELECT 
+	T1.Dates,
+	(LEAD(T1.Dates) OVER(ORDER BY T1.Dates)) AS NXT_DATES,
+    T1.Temperature,
+    (lead(T1.Temperature) over(order by T1.Dates)) as 'Temp_1'
+FROM
+(SELECT 
+	Dates,
+    ROUND(AVG(Temperature),2) AS Temperature
+FROM weathers 
+GROUP BY Dates
+ORDER BY Dates) AS T1) T2;
+
+############################################################ 5.Can you find the average of average humidity from the dataset #################################################
+#NOTE: should contain the following clauses: group by,order by,date
+SELECT 
+	Dates,
+	ROUND(AVG(AverageHumidity_Percentage),2) AS AVG_OF_AVERAGE_HUMIDITY
+FROM weathers 
+GROUP BY Dates
+ORDER BY Dates;
+
+#6. Use the GROUP BY clause on the Date column and make a query to fetch details for average windspeed ( which is now windspeed done in task 3 )
+SELECT 
+	Dates,
+	ROUND(AVG(AverageWindspeed_mph),2) AS AVG_OF_AverageWindspeed_mph
+FROM weathers 
+GROUP BY Dates
+ORDER BY Dates;
+
+################################################## 6. If the maximum gust speed increases from 55mph, fetch the details for the next 4 days ###########################
+SELECT 
+	T.*
+FROM
+(SELECT 
+	*,
+    (LEAD(Dates,1) OVER(ORDER BY Dates)) AS DATE_P_1,
+    (LEAD(Dates,2) OVER(ORDER BY Dates)) AS DATE_P_2,
+    (LEAD(Dates,3) OVER(ORDER BY Dates)) AS DATE_P_3   
+FROM weathers) AS T
+WHERE (DATEDIFF(T.DATE_P_1,T.Dates)=1 AND DATEDIFF(T.DATE_P_2,T.Dates)=2 AND DATEDIFF(T.DATE_P_3,T.Dates)=3
+AND T.Maximum_gust_speed_mph > 55 );
+
+############################################# 7.Find the number of days when the temperature went below 0 degrees Celsius ##############################################
+SELECT
+	COUNT(*)
+FROM
+(SELECT
+	Dates,
+	(((ROUND(AVG(Temperature),2)-32)*5)/9) AS Temperature_IN_C
+FROM weathers
+GROUP BY Dates
+HAVING (((ROUND(AVG(Temperature),2)-32)*5)/9) < 0 ) AS T
